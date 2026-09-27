@@ -331,6 +331,10 @@ int main(int argc, char **argv)
 
     if (workspace_is_macos_sequoia() || (workspace_is_macos_tahoe() || workspace_is_macos_goldengate())) {
         SLSRegisterConnectionNotifyProc(g_connection, connection_handler, 804, NULL);
+
+        // NOTE: Only delivered for windows subscribed to, which is every window from Sequoia on.
+        SLSRegisterConnectionNotifyProc(g_connection, connection_handler, 815, NULL);
+        SLSRegisterConnectionNotifyProc(g_connection, connection_handler, 816, NULL);
     }
 
     window_manager_init(&g_window_manager);

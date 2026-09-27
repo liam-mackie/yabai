@@ -12,11 +12,19 @@ typedef TEST_SIG(function);
 #define TEST_CHECK(r, e) if ((r) != (e)) { printf("                   \e[1;33m%s\e[m\e[1;31m#%d %s == %s\e[m \e[1;31m(%d == %d)\e[m\n", test_name, __LINE__, #r, #e, r, e); result = false; }
 
 #include "area.c"
+#include "window_ordered.c"
 
 #define TEST_ENTRY(name) { #name, test_##name },
 #define TEST_LIST                                              \
     TEST_ENTRY(display_area_is_in_direction)                   \
-    TEST_ENTRY(closest_display_in_direction)
+    TEST_ENTRY(closest_display_in_direction)                   \
+    TEST_ENTRY(window_ordered_out_leaves_the_tree)             \
+    TEST_ENTRY(window_ordered_out_stays_unmanaged)             \
+    TEST_ENTRY(window_ordered_in_is_tiled_again)               \
+    TEST_ENTRY(window_ordered_in_keeps_float)                  \
+    TEST_ENTRY(window_reordered_stays_tiled)                   \
+    TEST_ENTRY(window_visible_event_while_still_ordered_out)   \
+    TEST_ENTRY(macos_version_newer_than_listed)
 
 static struct {
     char *name;

@@ -1,5 +1,6 @@
 /bin
 /tests/bin
+/tests/integration/bin
 /archive
 /src/osax/loader_bin.c
 /src/osax/payload_bin.c
