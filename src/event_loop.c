@@ -554,7 +554,23 @@ static EVENT_HANDLER(WINDOW_CREATED)
     if (!window_id) { CFRelease(context); return; }
 
     struct window *existing_window = window_manager_find_window(&g_window_manager, window_id);
-    if (existing_window) { CFRelease(context); return; }
+    if (existing_window) {
+        // NOTE: Created is also posted for elements inside a window, which share its window id;
+        // only a new window element for a known window means its old element has gone stale.
+        CFTypeRef role = NULL;
+        AXUIElementCopyAttributeValue(context, kAXRoleAttribute, &role);
+
+        if (role && CFEqual(role, kAXWindowRole) &&
+            !CFEqual(context, existing_window->ref) &&
+            __sync_bool_compare_and_swap(&existing_window->id_ptr, &existing_window->id, &existing_window->id)) {
+            window_manager_replace_window_ref(&g_window_manager, existing_window, context);
+        } else {
+            CFRelease(context);
+        }
+
+        if (role) CFRelease(role);
+        return;
+    }
 
     pid_t window_pid = ax_window_pid(context);
     if (!window_pid) { CFRelease(context); return; }
@@ -989,6 +1005,8 @@ static EVENT_HANDLER(SLS_WINDOW_IS_VISIBLE)
     uint8_t ordered_in = 0;
     SLSWindowIsOrderedIn(g_connection, wid, &ordered_in);
     if (!ordered_in) return;
+
+    window_manager_refresh_window_ref(&g_window_manager, window);
 
     uint64_t sid = space_manager_active_space();
     window_manager_window_did_order_in(&g_window_manager, window, space_manager_is_window_on_space(sid, window) ? sid : 0);
