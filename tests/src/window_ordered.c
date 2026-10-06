@@ -165,12 +165,17 @@ TEST_FUNC(window_ordered_in_keeps_float,
 // A release newer than any listed must take the newest listed code paths, not the pre-Ventura ones.
 TEST_FUNC(macos_version_newer_than_listed,
 {
+    workspace_set_macos_version(28);
+    TEST_CHECK(workspace_is_macos_goldengate(), true);
+    TEST_CHECK(workspace_is_macos_tahoe(), false);
+
     workspace_set_macos_version(27);
-    TEST_CHECK(workspace_is_macos_tahoe(), true);
-    TEST_CHECK(workspace_is_macos_sequoia(), false);
+    TEST_CHECK(workspace_is_macos_goldengate(), true);
+    TEST_CHECK(workspace_is_macos_tahoe(), false);
 
     workspace_set_macos_version(26);
     TEST_CHECK(workspace_is_macos_tahoe(), true);
+    TEST_CHECK(workspace_is_macos_goldengate(), false);
 
     workspace_set_macos_version(15);
     TEST_CHECK(workspace_is_macos_sequoia(), true);
