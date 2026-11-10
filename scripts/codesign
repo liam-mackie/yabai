@@ -1,12 +1,21 @@
 #! /usr/bin/env bash
+#
+# Usage: ./scripts/codesign <path/to/executable> [<certificate>]
+#
+# <certificate> is a number from the list of available certificates, a SHA-1 hash, or
+# (part of) a certificate name. It is resolved to a hash before signing, because
+# `codesign -s <name>` refuses a name that several keychain entries share.
 
-identities="$(security find-identity -v -p codesigning | sed '$d')"
-id_count="$(echo "${identities}" | wc -l)"
+# `find-identity -v` lists an identity once per keychain it is stored in, and still lists
+# revoked or untrusted certificates (flagged CSSMERR_*). List each hash once, renumbered.
+identities="$(security find-identity -v -p codesigning | sed '$d' \
+	| awk '!seen[$2]++ { sub(/^ *[0-9]+\)/, sprintf("%3d)", ++n)); print }')"
+id_count="$(printf '%s' "${identities}" | grep -c '')"
 target="$(command -v "${1:-}")"
 
 function error() {
 	{
-		echo "$(tput bold)Error: ${@}$(tput sgr0)"
+		echo "$(tput bold)Error: ${*}$(tput sgr0)"
 		echo
 		echo "Usage: ./scripts/codesign <path/to/executable> [<certificate>]"
 		echo "Available codesigning certificates:"
@@ -18,24 +27,31 @@ function error() {
 if [ "${id_count}" -lt 1 ]; then
 	>&2 echo "Unable to find a codesigning identity"
 	exit 1
+elif [ ! -x "${target}" ]; then
+	error "Unable to find executable \"${1:-}\""
+elif [ "${#}" -eq 2 ]; then
+	selection="${2}"
 elif [ "${id_count}" -eq 1 ]; then
 	selection="1"
-elif [ "${id_count}" -gt 1 ] && [ "${#}" -eq 2 ]; then
-	selection="${2}"
-elif [ -x "${target}" ]; then
-	error "Unable to auto-select codesigning certificate"
 else
-	error "Unable to find executable \"${target}\""
+	error "Unable to auto-select codesigning certificate"
 fi
 
-if [[ "${selection}" =~ ^[0-9]+$ ]]; then
-	certificate="$(echo "${identities}" \
-		| awk "NR==${selection} {print \$2}")"
+if [[ "${selection}" =~ ^[0-9A-Fa-f]{40}$ ]]; then
+	matches="$(echo "${identities}" | awk -v hash="${selection}" '$2 == toupper(hash)')"
+elif [[ "${selection}" =~ ^[0-9]+$ ]]; then
+	matches="$(echo "${identities}" | awk "NR==${selection}")"
 else
-	certificate="$(echo "${identities}" \
-		| awk 'BEGIN{FS=OFS="\""} {gsub(/ /,"_",$2)} 1' \
-		| awk "\$3 ~ /${selection// /_}/ {print \$2}")"
+	matches="$(echo "${identities}" | SELECTION="${selection}" awk '{
+		name = $0; sub(/^[^"]*"/, "", name); sub(/"[^"]*$/, "", name)
+		if (index(name, ENVIRON["SELECTION"])) print
+	}')"
 fi
+
+# A renewed certificate keeps its name, so a name can match the revoked one as well.
+# codesign would happily sign with that; only fall back to a flagged one if nothing else matches.
+usable="$(echo "${matches}" | grep -v 'CSSMERR_')"
+certificate="$(echo "${usable:-${matches}}" | awk 'NF {print $2}')"
 
 if [ -z "${certificate}" ]; then
 	error "Unable to find codesigning certificate \"${selection}\""
@@ -43,5 +59,5 @@ elif [ "$(echo "${certificate}" | wc -l)" -ne 1 ]; then
 	error "Unable to uniquely identify codesigning certificate \"${selection}\""
 fi
 
+echo "Signing with $(echo "${identities}" | awk -v hash="${certificate}" '$2 == hash' | sed 's/^ *[0-9]*) //')"
 command codesign --deep --force --verbose --sign "${certificate}" "${target}"
-

@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Changed
 - Fixed scripting-addition *add_space* pattern for macOS 26.6 Apple Silicon arm64 [#2799](https://github.com/asmvik/yabai/issues/2799)
 - Fixed minor memory leak on space destruction, and added a few missing null checks to SkyLight API calls [#2791](https://github.com/asmvik/yabai/issues/2791)
+- Fixed scripting-addition space focus for macOS 27.2 Apple Silicon: updated the *dock.spaces* search offset, and stopped calling `currentSpaceForDisplayUUID:`, which Dock.app no longer implements
 
 ## [7.1.25] - 2026-05-08
 ### Changed

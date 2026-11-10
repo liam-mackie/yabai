@@ -238,6 +238,11 @@ static bool verify_os_version(NSOperatingSystemVersion os_version)
         NSLog(@"[yabai-sa] Detected Tahoe Preview... flagging 'macOSSequoia=true.'");
         macOSSequoia = true;
         return true; // Tahoe preview
+    } else if (os_version.majorVersion == 27) {
+
+        NSLog(@"[yabai-sa] Detected Golden Gate Developer Beta (26A5353q, 26A5368g, 26A5378j, 26A5378n, 26A5388g, 26A5406e, 26A5416b)... flagging 'macOSSequoia=true.'");
+        macOSSequoia = true;
+        return true; // Golden Gate Developer Beta (26A5353q, 26A5368g, 26A5378j, 26A5378n, 26A5388g, 26A5406e, 26A5416b)
     }
 
     NSLog(@"[yabai-sa] spaces functionality is only supported on macOS Big Sur 11.0.0+, Monterey 12.0.0+, Ventura 13.0.0+, Sonoma 14.0.0+, and Sequoia 15.0");
@@ -256,6 +261,11 @@ static bool verify_os_version(NSOperatingSystemVersion os_version)
         NSLog(@"[yabai-sa] Detected Tahoe Preview... flagging 'macOSSequoia=true.'");
         macOSSequoia = true;
         return true; // Tahoe preview
+    } else if (os_version.majorVersion == 27) {
+
+        NSLog(@"[yabai-sa] Detected Golden Gate Developer Beta (26A5353q, 26A5368g, 26A5378j, 26A5378n, 26A5388g, 26A5406e, 26A5416b)... flagging 'macOSSequoia=true.'");
+        macOSSequoia = true;
+        return true; // Golden Gate Developer Beta (26A5353q, 26A5368g, 26A5378j, 26A5378n, 26A5388g, 26A5406e, 26A5416b)
     }
 
     NSLog(@"[yabai-sa] spaces functionality is only supported on macOS Monterey 12.0.0+, and Ventura 13.0.0+, Sonoma 14.0.0+, and Sequoia 15.0");
@@ -443,20 +453,6 @@ static inline id display_space_for_display_uuid(CFStringRef display_uuid)
     return result;
 }
 
-static inline id display_space_for_space_with_id(uint64_t space_id)
-{
-    NSArray *display_spaces = get_ivar_value(dock_spaces, "_displaySpaces");
-    if (display_spaces != nil) {
-        for (id display_space in display_spaces) {
-            id display_source_space = get_ivar_value(display_space, "_currentSpace");
-            if (get_space_id(display_source_space) == space_id) {
-                return display_space;
-            }
-        }
-    }
-    return nil;
-}
-
 static void do_space_move(char *message)
 {
     if (dock_spaces == nil || dp_desktop_picture_manager == nil || move_space_fp == 0) return;
@@ -566,16 +562,12 @@ static void do_space_focus(char *message)
 
     if (dest_space_id) {
         CFStringRef dest_display = SLSCopyManagedDisplayForSpace(SLSMainConnectionID(), dest_space_id);
-        id source_space = macOSSequoia
-                        ? ((id (*)(id, SEL, CFStringRef)) objc_msgSend)(dock_spaces, @selector(currentSpaceForDisplayUUID:), dest_display)
-                        : ((id (*)(id, SEL, CFStringRef)) objc_msgSend)(dock_spaces, @selector(currentSpaceforDisplayUUID:), dest_display);
-        uint64_t source_space_id = get_space_id(source_space);
-
-        if (source_space_id != dest_space_id) {
-            id dest_space = space_for_display_with_id(dest_display, dest_space_id);
-            if (dest_space != nil) {
-                id display_space = display_space_for_space_with_id(source_space_id);
-                if (display_space != nil) {
+        id display_space = display_space_for_display_uuid(dest_display);
+        if (display_space != nil) {
+            uint64_t source_space_id = get_space_id(get_ivar_value(display_space, "_currentSpace"));
+            if (source_space_id != dest_space_id) {
+                id dest_space = space_for_display_with_id(dest_display, dest_space_id);
+                if (dest_space != nil) {
                     NSArray *ns_source_space = @[ @(source_space_id) ];
                     NSArray *ns_dest_space = @[ @(dest_space_id) ];
                     SLSShowSpaces(SLSMainConnectionID(), (__bridge CFArrayRef) ns_dest_space);
